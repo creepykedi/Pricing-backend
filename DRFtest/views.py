@@ -3,7 +3,6 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.parsers import JSONParser
 from rest_framework.utils import json
 
 from .models import InquiryDetails, InquiryHistory, Payment, PaymentInquiry, ContractorPrice
@@ -22,18 +21,24 @@ def get_inquiry_list(request):
     p = PaymentInquiry.objects.all()
 
     status_exact = request.GET.get('current_status_exact')
-    status_many = request.GET.get('current_status')
+    status = request.GET.get('current_status')
+    status = status.split("-")
+    print(status)
     serializer = PaymentInquirySerializer(p, many=True)
 
     if status_exact:
-        print("tur")
-        print(status_exact)
         p = p.filter(current_status__status=status_exact)
         serializer = PaymentInquirySerializer(p, many=True)
         return JsonResponse(serializer.data, safe=False)
 
-    if status_many:
-        pass
+    if status:
+        q = PaymentInquiry.objects.none()
+        for i in status:
+            p = PaymentInquiry.objects.filter(current_status__status=i)
+            q |= p
+
+        serializer = PaymentInquirySerializer(q, many=True)
+        return JsonResponse(serializer.data, safe=False)
 
     return JsonResponse(serializer.data, safe=False)
 
@@ -130,38 +135,3 @@ def create_payment(request):
             return Response(status=status.HTTP_404_NOT_FOUND)
     serializer = PaymentSerializer(p)
     return JsonResponse(serializer.data, safe=False, status=201)
-
-# @csrf_exempt
-# def products(request):
-#     if request.method == "GET":
-#         products = Product.objects.all()
-#         serializer = ProductSerializer(products, many=True)
-#         return JsonResponse(serializer.data, safe=False)
-#
-#     elif request.method == "POST":
-#         data = JSONParser().parse(request)
-#         serializer = ProductSerializer(data=data)
-#
-#         if serializer.is_valid():
-#             serializer.save()
-#             return JsonResponse(serializer.data, status=201)
-#         return JsonResponse(serializer.errors, status=400)
-#
-# @csrf_exempt
-# def product_detail(request, id):
-#     product = Product.objects.get(id=id)
-#     if request.method == "GET":
-#         serializer = ProductSerializer(product)
-#         return JsonResponse(serializer.data)
-#
-#     elif request.method == "PUT":
-#         data = JSONParser().parse(request)
-#         serializer = ProductSerializer(data=data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return JsonResponse(serializer.data)
-#         return JsonResponse(serializer.errors, status=400)
-#
-#     elif request.method == "DELETE":
-#         product.delete()
-#         return HttpResponse(status=204)
