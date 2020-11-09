@@ -6,7 +6,8 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.utils import json
 from django.core.exceptions import ValidationError
 from .models import InquiryDetails, InquiryHistory, Payment, \
-    PaymentInquiry, ContractorPrice, validate_okpd
+    PaymentInquiry, ContractorPrice
+from .validators import validate_okpd, format_okpd
 from django.contrib.auth.models import User
 from .serializers import PaymentInquirySerializer, ContractorSerializer, PaymentSerializer
 
@@ -73,8 +74,8 @@ def get_inquiry_payments(request):
 
 
 def add_details(data, new_payment):
-    details = ['product', 'amount', 'okei', 'okpd']
-    if all(details) in data:
+    if data.get('product') and data.get('amount') and \
+            data.get('okei') and data.get('okpd'):
         details_name = data['product']
         amount = data['amount']
         okei = data['okei']
@@ -85,8 +86,10 @@ def add_details(data, new_payment):
             return Response(status=status_.HTTP_400_BAD_REQUEST)
         try:
             amount = int(amount)
-            InquiryDetails.objects.create(name=details_name, amount=amount,
+            okpd = format_okpd(okpd)
+            i = InquiryDetails.objects.create(name=details_name, amount=amount,
                                           OKEI=okei, OKPD2=okpd, inquiry=new_payment)
+            print(i)
         except ValueError:
             return Response(status=status_.HTTP_400_BAD_REQUEST)
 

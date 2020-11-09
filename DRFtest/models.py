@@ -1,8 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator
-from django.core.exceptions import ValidationError
-from django.utils.translation import ugettext as _
+from .validators import validate_okpd
+
 
 # Запросы на расчет
 class PaymentInquiry(models.Model):
@@ -19,16 +19,6 @@ class PaymentInquiry(models.Model):
 
     class Meta:
         verbose_name_plural = "Запросы на расчет"
-
-
-def validate_okpd(val):
-    seq_type = type(val)
-    val = seq_type().join(filter(seq_type.isdigit, val))
-    if len(val) > 12:
-        raise ValidationError(
-            _('Invalid value: %(value)s'),
-            params={'value': val},
-        )
 
 
 # Состав запроса для расчета
