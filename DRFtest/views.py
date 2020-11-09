@@ -23,7 +23,6 @@ def get_inquiry_list(request):
     p = PaymentInquiry.objects.all()
     status_exact = request.GET.get('current_status_exact')
     status = request.GET.get('current_status')
-    status = status.split("-")
     serializer = PaymentInquirySerializer(p, many=True)
 
     if status_exact:
@@ -32,6 +31,7 @@ def get_inquiry_list(request):
         return JsonResponse(serializer.data, safe=False)
 
     if status:
+        status = status.split("-")
         q = PaymentInquiry.objects.none()
         for i in status:
             p = PaymentInquiry.objects.filter(current_status__status=i)
