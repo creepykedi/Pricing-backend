@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator
 from django.core.exceptions import ValidationError
-
+from django.utils.translation import ugettext as _
 
 # Запросы на расчет
 class PaymentInquiry(models.Model):
@@ -22,11 +22,12 @@ class PaymentInquiry(models.Model):
 
 
 def validate_okpd(val):
-    nums = [i for i in val if type(i) is int]
-    if len(nums) > 12:
+    seq_type = type(val)
+    val = seq_type().join(filter(seq_type.isdigit, val))
+    if len(val) > 12:
         raise ValidationError(
-            _('%(value) больше 12 цифр'),
-            params={'value': nums},
+            _('Invalid value: %(value)s'),
+            params={'value': val},
         )
 
 

@@ -1,11 +1,12 @@
 from django.http import JsonResponse
-from rest_framework import status
+from rest_framework import status as status_
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.utils import json
-
-from .models import InquiryDetails, InquiryHistory, Payment, PaymentInquiry, ContractorPrice
+from django.core.exceptions import ValidationError
+from .models import InquiryDetails, InquiryHistory, Payment, \
+    PaymentInquiry, ContractorPrice, validate_okpd
 from django.contrib.auth.models import User
 from .serializers import PaymentInquirySerializer, ContractorSerializer, PaymentSerializer
 
@@ -19,11 +20,9 @@ def get_contractor_list(request):
 
 def get_inquiry_list(request):
     p = PaymentInquiry.objects.all()
-
     status_exact = request.GET.get('current_status_exact')
     status = request.GET.get('current_status')
     status = status.split("-")
-    print(status)
     serializer = PaymentInquirySerializer(p, many=True)
 
     if status_exact:
@@ -48,7 +47,7 @@ def get_inquiry_by_id(request, id):
     try:
         p = PaymentInquiry.objects.get(pk=id)
     except PaymentInquiry.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status_.HTTP_404_NOT_FOUND)
 
     serializer = PaymentInquirySerializer(p)
     return JsonResponse(serializer.data)
@@ -59,7 +58,7 @@ def get_inquiry_details(request, id):
     try:
         p = PaymentInquiry.objects.get(pk=id)
     except PaymentInquiry.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status_.HTTP_404_NOT_FOUND)
 
     d = InquiryDetails.objects.filter(inquiry=p)
     serializer = PaymentInquirySerializer(d, many=True)
@@ -73,35 +72,73 @@ def get_inquiry_payments(request):
     return JsonResponse(serializer.data, safe=False)
 
 
+def add_details(data, new_payment):
+    details = ['product', 'amount', 'okei', 'okpd']
+    if all(details) in data:
+        details_name = data['product']
+        amount = data['amount']
+        okei = data['okei']
+        okpd = data['okpd']
+        try:
+            validate_okpd(okpd)
+        except ValidationError:
+            return Response(status=status_.HTTP_400_BAD_REQUEST)
+        try:
+            amount = int(amount)
+            InquiryDetails.objects.create(name=details_name, amount=amount,
+                                          OKEI=okei, OKPD2=okpd, inquiry=new_payment)
+        except ValueError:
+            return Response(status=status_.HTTP_400_BAD_REQUEST)
+
+
 @csrf_exempt
 @api_view(['POST'])
 def create_inquiry(request):
     data = json.dumps(request.data)
     data = json.loads(data)
-    name = data['name']
-    status = data['status']
-    deadline = data['deadline']
-    payment = data['payment_id']
-    resolution = data['resolution']
-    contractor_id = data['contractor_id']
+    name = data.get('name')
+    status = data.get('status')
+    if not name or not status:
+        return Response(status=status_.HTTP_400_BAD_REQUEST)
 
     st = InquiryHistory.objects.create(status=status)
     new_payment = PaymentInquiry.objects.create(name=name, current_status=st)
+
+    # InquiryDetails
+    add_details(data, new_payment)
+
+    contractor_id = data.get('contractor_id')
+    resolution = data.get('resolution')
+    deadline = data.get('deadline')
+    payment = data.get('payment_id')
+
     if contractor_id:
-        contractor = User.objects.get(pk=contractor_id)
-        st.contractor = contractor
-        st.save()
+        try:
+            contractor = User.objects.get(pk=contractor_id)
+            st.contractor = contractor
+            st.save()
+        except User.DoesNotExist:
+            return Response(status=status_.HTTP_404_NOT_FOUND)
+
     if resolution:
         st.resolution = resolution
         st.save()
+
     if deadline:
-        new_payment.deadline_date = deadline
-        new_payment.save()
-    if payment and payment != "":
-        payment = int(payment)
-        p = Payment.objects.get(pk=payment)
-        new_payment.payment_m = p
-        new_payment.save()
+        if deadline is not '':
+            new_payment.deadline_date = deadline
+            new_payment.save()
+    if payment:
+        try:
+            payment = int(payment)
+        except ValueError:
+            Response(status=status_.HTTP_400_BAD_REQUEST)
+        try:
+            p = Payment.objects.get(pk=payment)
+            new_payment.payment_m = p
+            new_payment.save()
+        except Payment.DoesNotExist:
+            return Response(status=status_.HTTP_404_NOT_FOUND)
 
     serializer = PaymentInquirySerializer(new_payment)
     return JsonResponse(serializer.data, safe=False, status=201)
@@ -111,10 +148,9 @@ def create_inquiry(request):
 @api_view(['POST'])
 def create_payment(request):
     data = json.loads(request.data)
-    print(data)
-    payment_id = data['id']
-    inquiry = data['inquiry_id']
-    nmc = data['nmc_id']
+    payment_id = data.get('id')
+    inquiry = data.get('inquiry_id')
+    nmc = data.get('nmc_id')
     p = Payment.objects.create()
     if payment_id:
         p.payment_id = payment_id
@@ -125,13 +161,13 @@ def create_payment(request):
             p.inquiry = i
             p.save()
         except PaymentInquiry.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(status=status_.HTTP_404_NOT_FOUND)
     if nmc:
         try:
             nmc = ContractorPrice.objects.get(pk=nmc)
             p.NMC = nmc
             p.save()
         except ContractorPrice.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(status=status_.HTTP_404_NOT_FOUND)
     serializer = PaymentSerializer(p)
     return JsonResponse(serializer.data, safe=False, status=201)
