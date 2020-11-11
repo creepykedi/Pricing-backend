@@ -32,11 +32,7 @@ def get_inquiry_list(request):
 
     if status:
         status = status.split("-")
-        q = PaymentInquiry.objects.none()
-        for i in status:
-            p = PaymentInquiry.objects.filter(current_status__status=i)
-            q |= p
-
+        q = PaymentInquiry.objects.filter(current_status__status__in=status)
         serializer = PaymentInquirySerializer(q, many=True)
         return JsonResponse(serializer.data, safe=False)
 
@@ -88,7 +84,7 @@ def add_details(data, new_payment):
             amount = int(amount)
             okpd = format_okpd(okpd)
             i = InquiryDetails.objects.create(name=details_name, amount=amount,
-                                          OKEI=okei, OKPD2=okpd, inquiry=new_payment)
+                                              OKEI=okei, OKPD2=okpd, inquiry=new_payment)
             print(i)
         except ValueError:
             return Response(status=status_.HTTP_400_BAD_REQUEST)
@@ -119,16 +115,14 @@ def create_inquiry(request):
         try:
             contractor = User.objects.get(pk=contractor_id)
             st.contractor = contractor
-            st.save()
         except User.DoesNotExist:
             return Response(status=status_.HTTP_404_NOT_FOUND)
 
     if resolution:
         st.resolution = resolution
-        st.save()
 
     if deadline:
-        if deadline is not '':
+        if deadline != '':
             new_payment.deadline_date = deadline
             new_payment.save()
     if payment:
@@ -143,6 +137,7 @@ def create_inquiry(request):
         except Payment.DoesNotExist:
             return Response(status=status_.HTTP_404_NOT_FOUND)
 
+    st.save()
     serializer = PaymentInquirySerializer(new_payment)
     return JsonResponse(serializer.data, safe=False, status=201)
 

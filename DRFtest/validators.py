@@ -14,5 +14,9 @@ def validate_okpd(val):
 
 def format_okpd(okpd):
     okpd = okpd.replace(".", "")
+    length = len(str(okpd))
+    for letter in range(12-length):
+        okpd += "0"
+
     okpd = '.'.join(okpd[i:i + 3] for i in range(0, len(okpd), 3))
     return okpd

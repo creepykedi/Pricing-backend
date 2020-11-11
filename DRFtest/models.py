@@ -14,7 +14,8 @@ class PaymentInquiry(models.Model):
 
     def __str__(self):
         if self.payment_m:
-            return f"{self.name} #{self.id}. Статус: {self.current_status.status}. Создан: {self.date_created.date()}. Расчет №{self.payment_m.id}"
+            return f"{self.name} #{self.id}. Статус: {self.current_status.status}. " \
+                   f"Создан: {self.date_created.date()}. Расчет №{self.payment_m.id}"
         return f"{self.name} #{self.id}. Статус: {self.current_status.status}. Создан: {self.date_created.date()}"
 
     class Meta:
