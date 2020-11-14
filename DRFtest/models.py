@@ -49,7 +49,7 @@ class InquiryHistory(models.Model):
 
     status = models.CharField(max_length=128, choices=status_choices)
     entry_date = models.DateTimeField(auto_now=True)
-    contractor = models.ForeignKey(User, default="", null=True, blank=True, on_delete=models.CASCADE)
+    contractor = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE)
     resolution = models.TextField(null=True, blank=True)
 
     def __str__(self):

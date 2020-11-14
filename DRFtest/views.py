@@ -111,7 +111,7 @@ def create_inquiry(request):
     deadline = data.get('deadline')
     payment = data.get('payment_id')
 
-    if contractor_id:
+    if contractor_id and contractor_id != '':
         try:
             contractor = User.objects.get(pk=contractor_id)
             st.contractor = contractor
